@@ -129,17 +129,20 @@ def parse_ct_cert(entry):
     cert_data.log_timestamp = mth.Timestamp
     
     if mth.LogEntryType == "X509LogEntryType":
-        cert = x509.load_der_x509_certificate(certstruct.Certificate.parse(mth.Entry).CertData, default_backend())
-        cert_data.all_domains = get_all_domains(cert)
-        
-        #not before and not after
-        cert_data.not_before = int(datetime.timestamp(cert.not_valid_before))
-        cert_data.not_after = int(datetime.timestamp(cert.not_valid_after))
+        try:
+            cert = x509.load_der_x509_certificate(certstruct.Certificate.parse(mth.Entry).CertData, default_backend())
+            cert_data.all_domains = get_all_domains(cert)
+            
+            #not before and not after
+            cert_data.not_before = int(datetime.timestamp(cert.not_valid_before))
+            cert_data.not_after = int(datetime.timestamp(cert.not_valid_after))
 
-        #dump cert in byte
-        cert_data.cert_dump = base64.b64encode(cert.public_bytes(Encoding.DER)).decode('utf-8')
+            #dump cert in byte
+            cert_data.cert_dump = base64.b64encode(cert.public_bytes(Encoding.DER)).decode('utf-8')
 
-        return cert_data
+            return cert_data
+        except:
+            return None
     else: # if Log entry type is precertificate
         return None
 

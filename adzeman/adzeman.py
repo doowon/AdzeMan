@@ -289,11 +289,13 @@ async def work_queue_monitor(work_deque: deque, parse_que: asyncio.Queue, total_
         # print(len(work_deque))
         await asyncio.sleep(2)
 
-async def retrieve_certs(loop, ct_url, start_ct_index=0, down_dir="/tmp/", concurrency_cnt=CONCURRENCY_CNT): 
+async def retrieve_certs(loop, ct_url, start_ct_index=0, down_dir="/tmp/", concurrency_cnt=CONCURRENCY_CNT, block_size=32): 
 
     try:
-        max_block_size = get_max_block_size(ct_url)
         tree_size = get_tree_size(ct_url)
+        max_block_size = get_max_block_size(ct_url)
+        if block_size > max_block_size:
+            block_size = max_block_size
     except Exception as e:
         print(e)
         return
@@ -305,7 +307,7 @@ async def retrieve_certs(loop, ct_url, start_ct_index=0, down_dir="/tmp/", concu
     # populate work loads and insert them into deque
     try:
         work_deque = deque()
-        populate_work(work_deque, max_block_size, tree_size, csv_save_root_path, start_ct_index)
+        populate_work(work_deque, block_size, tree_size, csv_save_root_path, start_ct_index)
         print("Downloading certificates from CT", ct_url)
         print(("Total: {}, start_ct_index: {}, # of chunks: {}".format(tree_size, start_ct_index, len(work_deque))))
         chunk_size = len(work_deque)
@@ -336,6 +338,7 @@ if __name__ == "__main__":
     parser.add_argument('-u', dest="ct_url", action="store", help="Specific CT url (e.g., ct.googleapis.com/rocketeer)")
     parser.add_argument('-o', dest="down_dir", action="store", default="/tmp/", type=str, help="Output dir to store certificates from CTs")
     parser.add_argument('-c', dest='concurrency_cnt', action='store', default=50, type=int, help="The number of concurrent downloads to run at a time")
+    parser.add_argument('-b', dest='block_size', action='store', default=32, type=int, help="The block size to download certificates at once")
 
     args = parser.parse_args()
     if args.list_mode:
@@ -350,7 +353,7 @@ if __name__ == "__main__":
             ct_url = ct_url.replace("http://", "")
         
         loop = asyncio.get_event_loop()
-        loop.run_until_complete(retrieve_certs(loop, ct_url, args.start_ct_index, down_dir=args.down_dir, concurrency_cnt=args.concurrency_cnt))
+        loop.run_until_complete(retrieve_certs(loop, ct_url, args.start_ct_index, down_dir=args.down_dir, concurrency_cnt=args.concurrency_cnt, block_size=args.blocksize))
         loop.close()
     else:
         parser.print_help()

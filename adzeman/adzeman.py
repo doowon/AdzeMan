@@ -1,14 +1,12 @@
 import base64
-import json
-import math
 import os
+import sys
+import argparse
 from datetime import datetime
 from collections import deque
 
 import argparse
 import asyncio
-from os import write
-from re import sub
 import aiohttp
 import aiofiles
 import aioprocessing
@@ -26,7 +24,7 @@ import certstruct
 
 ct_log_info_url = "https://{}/ct/v1/get-sth" 
 ct_log_down_url = "https://{}/ct/v1/get-entries?start={}&end={}"
-CONCURRENCY_CNT = 2
+CONCURRENCY_CNT = 50
 MAX_QUEUE_SIZE = 2000
 MAX_CSV_SAVE_FILE_NUM = 1000000
 
@@ -68,7 +66,14 @@ def retrieve_all_ct_logs():
             for log in info["logs"]:
                 if "usable" not in log["state"]:
                     continue
-                r = requests.get(ct_log_info_url.format(log['url']))
+                
+                ct_url = log['url']
+                if "https://" in ct_url:
+                    ct_url = ct_url.replace("https://", "")
+                elif "http://" in ct_url:
+                    ct_url = ct_url.replace("http://", "")
+                
+                r = requests.get(ct_log_info_url.format(ct_url))
                 if r.status_code == 200:
                     ct_info = r.json()
                     tree_size = ct_info["tree_size"]
@@ -77,12 +82,13 @@ def retrieve_all_ct_logs():
                 else:
                     tree_size = -1
                     timestamp = 0
+                
                 print(log['description'])
                 print("\t\- URL:\t\t\t{}".format(log['url']))
                 print("\t\- Operator:\t\t{}".format(info['name']))
                 print("\t\- Cert. Count:\t\t{}".format(tree_size))
                 print("\t\- Timestamp:\t\t{}".format(timestamp.strftime('%Y-%m-%d %H:%M:%S')))
-                print("\t\- Max Block Size:\t{}\n".format(get_max_block_size(log['url'])))
+                print("\t\- Max Block Size:\t{}\n".format(get_max_block_size(ct_url)))
     
     print("Total Cert. number:", total_cert_num)
 
@@ -250,7 +256,7 @@ def parse_worker(entries):
         )
         i += 1
     
-    print("pid", os.getpid(), start_ct_index)
+    # print("pid", os.getpid(), start_ct_index)
     
     with open(csv_save_file_path, "w", encoding="UTF-8") as f:
         f.write("".join(lines))
@@ -280,7 +286,7 @@ async def work_queue_monitor(work_deque: deque, parse_que: asyncio.Queue, total_
             total_block_size,
             ((total_block_size - len(work_deque)) / total_block_size) * 100.0
         ))
-        print(len(work_deque))
+        # print(len(work_deque))
         await asyncio.sleep(2)
 
 async def retrieve_certs(loop, ct_url, start_ct_index=0, down_dir="/tmp/", concurrency_cnt=CONCURRENCY_CNT): 
@@ -323,20 +329,31 @@ async def retrieve_certs(loop, ct_url, start_ct_index=0, down_dir="/tmp/", concu
     await parse_que.put(None)
 
 if __name__ == "__main__":
-    # parser = argparse.ArgumentParser(description='Download Certificate Transparency Logs')
-    # retrieve_all_ct_logs()
+    parser = argparse.ArgumentParser(description='Download Certificate Transparency Logs')
     
-    # ct_url = "ct.googleapis.com/rocketeer"
-    ct_url = "oak.ct.letsencrypt.org/2021"
-    if "https://" in ct_url:
-        ct_url = ct_url.replace("https://", "")
-    elif "http://" in ct_url:
-        ct_url = ct_url.replace("http://", "")
-    
-    start_ct_index = 0
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(retrieve_certs(loop, ct_url, start_ct_index))
-    loop.close()
+    parser.add_argument("-s", dest="start_ct_index", action='store', default=0, help="Restart downloading certificate from the certain offset")
+    parser.add_argument('-l', dest="list_mode", action="store_true", help="List all available certificate lists")
+    parser.add_argument('-u', dest="ct_url", action="store", help="Specific CT url (e.g., ct.googleapis.com/rocketeer)")
+    parser.add_argument('-o', dest="down_dir", action="store", default="/tmp/", type=str, help="Output dir to store certificates from CTs")
+    parser.add_argument('-c', dest='concurrency_cnt', action='store', default=50, type=int, help="The number of concurrent downloads to run at a time")
+
+    args = parser.parse_args()
+    if args.list_mode:
+        retrieve_all_ct_logs()
+        sys.exit(0)
+
+    if args.ct_url:
+        ct_url = args.ct_url
+        if "https://" in ct_url:
+            ct_url = ct_url.replace("https://", "")
+        elif "http://" in args.ct_url:
+            ct_url = ct_url.replace("http://", "")
+        
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(retrieve_certs(loop, ct_url, args.start_ct_index, down_dir=args.down_dir, concurrency_cnt=args.concurrency_cnt))
+        loop.close()
+    else:
+        parser.print_help()
 
     # work_deque = deque()
     # populate_work(work_deque, 10, 100)

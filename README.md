@@ -2,7 +2,7 @@
 Another version of [Axeman](https://github.com/CaliDog/Axeman).
 
 ### Purpose
-AdzeMan is another version of Axeman, a utility to download certificates from Certificate Transparencies (CTs) using multi-processing (aiproceesing) and concurreny (asyncio).
+AdzeMan is another version of Axeman, a utility to download certificates from Certificate Transparencies (CTs) using multi-processing (aiproceesing) and concurreny (asyncio) with more features that I need for my current project.
 
 ### New features
 1. Cryptography library: It uses [cryptography.io](https://cryptography.io/) rather than [pyOpenSSL](https://pypi.org/project/pyOpenSSL/) because the cyptography.io library is strongly recommended to use over pyOpenSSL.

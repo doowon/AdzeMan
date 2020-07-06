@@ -212,23 +212,26 @@ async def download_entiries_work(loop, work_deque, ct_url, parse_que, fail_csv_p
                 print(e)
                 return
             
-            async with session.get(ct_log_down_url.format(ct_url, start_ct_index, end_ct_index)) as response:
-                if response.status == 200:
-                    j_data = await response.json()
-                    entries = j_data["entries"]
-                    csv_save_file_name = "{}-{}.csv".format(start_ct_index, end_ct_index)
-                    csv_save_file_path = os.path.join(csv_save_subdir_path, csv_save_file_name)
-                    await parse_que.put({
-                        "ct_url": ct_url,
-                        "entries": entries,
-                        "csv_save_file_path": csv_save_file_path,
-                        "start_ct_index": start_ct_index,
-                        "end_ct_index": end_ct_index
-                    })
-                else:
-                    async with aiofiles.open(os.path.join(fail_csv_path, "fail.csv"), "a") as f:
-                        await f.write("{}, {}, {}\n".format(ct_url, start_ct_index, end_ct_index))
-            # await asyncio.sleep(2)
+            try:
+                async with session.get(ct_log_down_url.format(ct_url, start_ct_index, end_ct_index)) as response:
+                    if response.status == 200:
+                        j_data = await response.json()
+                        entries = j_data["entries"]
+                        csv_save_file_name = "{}-{}.csv".format(start_ct_index, end_ct_index)
+                        csv_save_file_path = os.path.join(csv_save_subdir_path, csv_save_file_name)
+                        await parse_que.put({
+                            "ct_url": ct_url,
+                            "entries": entries,
+                            "csv_save_file_path": csv_save_file_path,
+                            "start_ct_index": start_ct_index,
+                            "end_ct_index": end_ct_index
+                        })
+                    else:
+                        async with aiofiles.open(os.path.join(fail_csv_path, "fail.csv"), "a") as f:
+                            await f.write("{}, {}, {}\n".format(ct_url, start_ct_index, end_ct_index))
+            except:
+                async with aiofiles.open(os.path.join(fail_csv_path, "fail.csv"), "a") as f:
+                    await f.write("{}, {}, {}\n".format(ct_url, start_ct_index, end_ct_index))
 
 def parse_worker(entries):
     """

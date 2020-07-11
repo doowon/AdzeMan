@@ -24,7 +24,7 @@ import certstruct
 
 ct_log_info_url = "https://{}/ct/v1/get-sth" 
 ct_log_down_url = "https://{}/ct/v1/get-entries?start={}&end={}"
-CONCURRENCY_CNT = 50
+CONCURRENCY_CNT = 60
 MAX_QUEUE_SIZE = 2000
 MAX_CSV_SAVE_FILE_NUM = 1000000
 
@@ -38,7 +38,7 @@ def get_max_block_size(ct_url):
     permissible.  These entries SHALL be sequential beginning with the
     entry specified by "start"
     """
-    r = requests.get(ct_log_down_url.format(ct_url, 0, 100000))
+    r = requests.get(ct_log_down_url.format(ct_url, 0, 1024))
     if r.status_code == 200:
         return len(r.json()["entries"])
     else: 

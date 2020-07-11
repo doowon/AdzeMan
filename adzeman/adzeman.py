@@ -24,7 +24,7 @@ import certstruct
 
 ct_log_info_url = "https://{}/ct/v1/get-sth" 
 ct_log_down_url = "https://{}/ct/v1/get-entries?start={}&end={}"
-CONCURRENCY_CNT = 60
+CONCURRENCY_CNT = 50
 MAX_QUEUE_SIZE = 2000
 MAX_CSV_SAVE_FILE_NUM = 1000000
 
@@ -299,7 +299,7 @@ async def work_queue_monitor(work_deque: deque, parse_que: asyncio.Queue, total_
         # print(len(work_deque))
         await asyncio.sleep(2)
 
-async def retrieve_certs(loop, ct_url, start_ct_index=0, down_dir="/tmp/", concurrency_cnt=CONCURRENCY_CNT, block_size=32): 
+async def retrieve_certs(loop, ct_url, start_ct_index=0, down_dir="/tmp/", concurrency_cnt=CONCURRENCY_CNT, block_size=32):
 
     try:
         tree_size = get_tree_size(ct_url)
@@ -317,7 +317,7 @@ async def retrieve_certs(loop, ct_url, start_ct_index=0, down_dir="/tmp/", concu
     # populate work loads and insert them into deque
     try:
         work_deque = deque()
-        populate_work(work_deque, block_size, tree_size, csv_save_root_path, start_ct_index)
+        populate_work(work_deque, max_block_size, tree_size, csv_save_root_path, start_ct_index)
         print("Downloading certificates from CT", ct_url)
         print(("Total: {}, start_ct_index: {}, # of chunks: {}".format(tree_size, start_ct_index, len(work_deque))))
         chunk_size = len(work_deque)

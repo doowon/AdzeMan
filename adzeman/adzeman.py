@@ -154,7 +154,7 @@ def populate_work(work_deque, max_block_size, tree_size, csv_save_root_path, sta
     """
     tree_size -- the total number of certificates
     """
-    print("Populating works...")
+    print("Populating works..., max_block_size: {}".format(max_block_size))
     
     # Resume feature: check the downloaded last start_ct_index in the download directory
     # and populate undownloaded ct entiries.

@@ -234,10 +234,12 @@ async def download_entiries_work(loop, work_deque, ct_url, parse_que, fail_csv_p
                             "end_ct_index": end_ct_index
                         })
                     else:
-                        async with aiofiles.open(os.path.join(fail_csv_path, "fail.csv"), "a") as f:
+                        csv_file_name = ct_url.replace('/', '_')
+                        async with aiofiles.open(os.path.join(fail_csv_path, "fail_" + csv_file_name + ".csv"), "a") as f:
                             await f.write("{}, {}, {}\n".format(ct_url, start_ct_index, end_ct_index))
             except:
-                async with aiofiles.open(os.path.join(fail_csv_path, "fail.csv"), "a") as f:
+                csv_file_name = ct_url.replace('/', '_')
+                async with aiofiles.open(os.path.join(fail_csv_path, "fail_" + csv_file_name + ".csv"), "a") as f:
                     await f.write("{}, {}, {}\n".format(ct_url, start_ct_index, end_ct_index))
 
 def parse_worker(entries):

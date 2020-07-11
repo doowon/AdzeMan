@@ -79,6 +79,7 @@ def retrieve_all_ct_logs():
                     tree_size = ct_info["tree_size"]
                     total_cert_num += tree_size
                     timestamp = datetime.fromtimestamp(int(ct_info["timestamp"])/1000.0)
+                    timestamp = timestamp.strftime('%Y-%m-%d %H:%M:%S')
                 else:
                     tree_size = -1
                     timestamp = 0
@@ -87,7 +88,7 @@ def retrieve_all_ct_logs():
                 print("\t\- URL:\t\t\t{}".format(log['url']))
                 print("\t\- Operator:\t\t{}".format(info['name']))
                 print("\t\- Cert. Count:\t\t{}".format(tree_size))
-                print("\t\- Timestamp:\t\t{}".format(timestamp.strftime('%Y-%m-%d %H:%M:%S')))
+                print("\t\- Timestamp:\t\t{}".format(timestamp))
                 print("\t\- Max Block Size:\t{}\n".format(get_max_block_size(ct_url)))
     
     print("Total Cert. number:", total_cert_num)

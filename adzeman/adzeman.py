@@ -90,9 +90,9 @@ def retrieve_all_ct_logs():
                 else:
                     tree_size = -1
                     timestamp = 0
+                    print(log['description'])
                     print("\t\- URL:\t\t\t{}".format(log['url']))
-                    print("\t\- Operator:\t\t{}".format(info['name']))
-                    print("\t ERROR")
+                    print("\t\- Operator:\t\t{}, \t ERROR".format(info['name']))
     
     print("Total Cert. number:", total_cert_num)
 

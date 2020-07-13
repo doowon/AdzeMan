@@ -290,9 +290,10 @@ async def parse_entiries_work(parse_que: asyncio.Queue):
     process_pool.close()
     await process_pool.coro_join()
             
-async def work_queue_monitor(work_deque: deque, parse_que: asyncio.Queue, total_block_size):
+async def work_queue_monitor(work_deque: deque, parse_que: asyncio.Queue, total_block_size, ct_url):
     while True:
-        print("Queue Status: Parse Queue Size: {}, Downloaded blocks: {}/{} ({:.4f}%)".format(
+        print("{}: Parse Queue Size: {}, Downloaded blocks: {}/{} ({:.4f}%)".format(
+            ct_url,
             parse_que.qsize(),
             total_block_size - len(work_deque),
             total_block_size,
@@ -329,7 +330,7 @@ async def retrieve_certs(loop, ct_url, start_ct_index=0, down_dir="/tmp/", concu
     
     parse_que = asyncio.Queue(maxsize=MAX_QUEUE_SIZE)
     
-    monitor_task = asyncio.create_task(work_queue_monitor(work_deque, parse_que, chunk_size))
+    monitor_task = asyncio.create_task(work_queue_monitor(work_deque, parse_que, chunk_size, ct_url))
 
     for _ in range(concurrency_cnt):
         asyncio.create_task(download_entiries_work(loop, work_deque, ct_url, parse_que, down_dir))

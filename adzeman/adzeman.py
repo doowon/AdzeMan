@@ -225,11 +225,13 @@ def populate_work(work_deque, max_block_size, tree_size, csv_save_root_path, sta
                 subdir = str(start_idx)[:-digit]
 
             csv_save_subdir_path = os.path.join(csv_save_root_path, subdir)
+            csv_save_file_name = "{}-{}.csv".format(str(start_idx), str(end_idx))
+            if os.path.exists(os.path.join(csv_save_subdir_path, csv_save_file_name)):
+                continue
             print(start_idx, end_idx, csv_save_subdir_path)
             work_deque.append((start_idx, end_idx, csv_save_subdir_path))
         
         print("All work queue size:", len(work_deque))
-
 
 async def download_entiries_work(loop, work_deque, ct_url, parse_que, fail_csv_path):
     async with aiohttp.ClientSession(loop=loop, timeout=aiohttp.ClientTimeout(total=10)) as session:

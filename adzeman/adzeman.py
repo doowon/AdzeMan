@@ -2,6 +2,7 @@ import base64
 import os
 import sys
 import argparse
+import csv
 from datetime import datetime
 from collections import deque
 
@@ -150,65 +151,85 @@ def parse_ct_cert(entry):
     else: # if Log entry type is precertificate
         return None
 
-def populate_work(work_deque, max_block_size, tree_size, csv_save_root_path, start_ct_index=0):
+def populate_work(work_deque, max_block_size, tree_size, csv_save_root_path, start_ct_index=0, fail_file=None):
     """
     tree_size -- the total number of certificates
     """
-    print("Populating works..., max_block_size: {}".format(max_block_size))
-    
-    # Resume feature: check the downloaded last start_ct_index in the download directory
-    # and populate undownloaded ct entiries.
-    downloaded_csv_files = set()
-    for subdir in os.listdir(csv_save_root_path):
-        for csv_file in os.listdir(os.path.join(csv_save_root_path, subdir)):
-            downloaded_csv_files.add(int(csv_file.split("-")[0]))
+    digit = len(str(MAX_CSV_SAVE_FILE_NUM)) - 1
 
-    total_size = tree_size - 1
-    end_ct_index = start_ct_index + max_block_size - 1
-
-    if end_ct_index >= total_size:
-        end_ct_index = total_size
-    
-    if start_ct_index == (tree_size - 1):
-        raise Exception("No work!")
-
-    all_start_number_list = set()
-    while True:
-        all_start_number_list.add(start_ct_index)
+    if fail_file is None:
+        print("Populating works..., max_block_size: {}".format(max_block_size))
         
+        # Resume feature: check the downloaded last start_ct_index in the download directory
+        # and populate undownloaded ct entiries.
+        downloaded_csv_files = set()
+        for subdir in os.listdir(csv_save_root_path):
+            for csv_file in os.listdir(os.path.join(csv_save_root_path, subdir)):
+                downloaded_csv_files.add(int(csv_file.split("-")[0]))
+
+        total_size = tree_size - 1
+        end_ct_index = start_ct_index + max_block_size - 1
+
         if end_ct_index >= total_size:
             end_ct_index = total_size
-            break
         
-        start_ct_index = end_ct_index + 1
-        end_ct_index = start_ct_index + max_block_size
+        if start_ct_index == (tree_size - 1):
+            raise Exception("No work!")
 
-    to_down_start_idx = all_start_number_list - downloaded_csv_files
+        all_start_number_list = set()
+        while True:
+            all_start_number_list.add(start_ct_index)
+            
+            if end_ct_index >= total_size:
+                end_ct_index = total_size
+                break
+            
+            start_ct_index = end_ct_index + 1
+            end_ct_index = start_ct_index + max_block_size
 
-    digit = len(str(MAX_CSV_SAVE_FILE_NUM)) - 1
+        to_down_start_idx = all_start_number_list - downloaded_csv_files
+
+        for start_idx in sorted(list(to_down_start_idx)):
+            if start_idx < MAX_CSV_SAVE_FILE_NUM:
+                subdir = "0"
+            else:
+                subdir = str(start_idx)[:-digit]
+            csv_save_subdir_path = os.path.join(csv_save_root_path, subdir)
+            if not os.path.exists(csv_save_subdir_path):
+                os.makedirs(csv_save_subdir_path, exist_ok=True)
+            
+            end_idx = start_idx + max_block_size
+            if end_idx >= total_size:
+                end_idx = total_size
+            
+            work_deque.append((start_idx, end_idx, csv_save_subdir_path))
+            # print(start_idx, end_idx, csv_save_subdir_path)
         
-    for start_idx in sorted(list(to_down_start_idx)):
-        if start_idx < MAX_CSV_SAVE_FILE_NUM:
-            subdir = "0"
-        else:
-            subdir = str(start_idx)[:-digit]
-        csv_save_subdir_path = os.path.join(csv_save_root_path, subdir)
-        if not os.path.exists(csv_save_subdir_path):
-            os.makedirs(csv_save_subdir_path, exist_ok=True)
-        
-        end_idx = start_idx + max_block_size
-        if end_idx >= total_size:
-            end_idx = total_size
-        
-        work_deque.append((start_idx, end_idx, csv_save_subdir_path))
-        # print(start_idx, end_idx, csv_save_subdir_path)
+        print("All block nubmer to download: {}, Downloaded block number: {}, To download block number: {}".format(
+            len(all_start_number_list),
+            len(downloaded_csv_files),
+            len(to_down_start_idx)
+        ))
+        print("All work queue size:", len(work_deque))
     
-    print("All block nubmer to download: {}, Downloaded block number: {}, To download block number: {}".format(
-        len(all_start_number_list),
-        len(downloaded_csv_files),
-        len(to_down_start_idx)
-    ))
-    print("All work queue size:", len(work_deque))
+    else: # if fail_file is specified
+        reader = csv.reader(open(fail_file))
+        for line in reader:
+            # ct_url = line[0]
+            start_idx = int(line[1])
+            end_idx = int(line[2])
+            
+            if start_idx < MAX_CSV_SAVE_FILE_NUM:
+                subdir = "0"
+            else:
+                subdir = str(start_idx)[:-digit]
+
+            csv_save_subdir_path = os.path.join(csv_save_root_path, subdir)
+            print(start_idx, end_idx, csv_save_subdir_path)
+            work_deque.append((start_idx, end_idx, csv_save_subdir_path))
+        
+        print("All work queue size:", len(work_deque))
+
 
 async def download_entiries_work(loop, work_deque, ct_url, parse_que, fail_csv_path):
     async with aiohttp.ClientSession(loop=loop, timeout=aiohttp.ClientTimeout(total=10)) as session:
@@ -302,7 +323,7 @@ async def work_queue_monitor(work_deque: deque, parse_que: asyncio.Queue, total_
         # print(len(work_deque))
         await asyncio.sleep(2)
 
-async def retrieve_certs(loop, ct_url, start_ct_index=0, down_dir="/tmp/", concurrency_cnt=CONCURRENCY_CNT, block_size=32):
+async def retrieve_certs(loop, ct_url, start_ct_index=0, down_dir="/tmp/", concurrency_cnt=CONCURRENCY_CNT, block_size=32, fail_file=None):
 
     try:
         tree_size = get_tree_size(ct_url)
@@ -320,7 +341,7 @@ async def retrieve_certs(loop, ct_url, start_ct_index=0, down_dir="/tmp/", concu
     # populate work loads and insert them into deque
     try:
         work_deque = deque()
-        populate_work(work_deque, max_block_size, tree_size, csv_save_root_path, start_ct_index)
+        populate_work(work_deque, max_block_size, tree_size, csv_save_root_path, start_ct_index, fail_file)
         print("Downloading certificates from CT", ct_url)
         print(("Total: {}, start_ct_index: {}, # of chunks: {}".format(tree_size, start_ct_index, len(work_deque))))
         chunk_size = len(work_deque)
@@ -352,6 +373,7 @@ if __name__ == "__main__":
     parser.add_argument('-o', dest="down_dir", action="store", default="/tmp/", type=str, help="Output dir to store certificates from CTs")
     parser.add_argument('-c', dest='concurrency_cnt', action='store', default=50, type=int, help="The number of concurrent downloads to run at a time")
     parser.add_argument('-b', dest='block_size', action='store', default=32, type=int, help="The block size to download certificates at once")
+    parser.add_argument('-f', dest="fail_file", action='store', default=None, type=str, help="Redownload failed CT log")
 
     args = parser.parse_args()
     if args.list_mode:
@@ -366,7 +388,9 @@ if __name__ == "__main__":
             ct_url = ct_url.replace("http://", "")
         
         loop = asyncio.get_event_loop()
-        loop.run_until_complete(retrieve_certs(loop, ct_url, args.start_ct_index, down_dir=args.down_dir, concurrency_cnt=args.concurrency_cnt, block_size=args.block_size))
+        loop.run_until_complete(retrieve_certs(loop, ct_url, args.start_ct_index, down_dir=args.down_dir,
+                                                concurrency_cnt=args.concurrency_cnt, block_size=args.block_size,
+                                                fail_file=args.fail_file))
         loop.close()
     else:
         parser.print_help()

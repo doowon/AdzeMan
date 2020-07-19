@@ -214,6 +214,7 @@ def populate_work(work_deque, max_block_size, tree_size, csv_save_root_path, sta
     
     else: # if fail_file is specified
         reader = csv.reader(open(fail_file))
+        tmp_set = set()
         for line in reader:
             # ct_url = line[0]
             start_idx = int(line[1])
@@ -226,6 +227,10 @@ def populate_work(work_deque, max_block_size, tree_size, csv_save_root_path, sta
 
             csv_save_subdir_path = os.path.join(csv_save_root_path, subdir)
             csv_save_file_name = "{}-{}.csv".format(str(start_idx), str(end_idx))
+            if csv_save_file_name in tmp_set:
+                continue
+            else:
+                tmp_set.add(csv_save_file_name)
             if os.path.exists(os.path.join(csv_save_subdir_path, csv_save_file_name)):
                 continue
             print(start_idx, end_idx, csv_save_subdir_path)

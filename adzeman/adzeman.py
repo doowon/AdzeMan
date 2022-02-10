@@ -395,7 +395,7 @@ if __name__ == "__main__":
             ct_url = ct_url.replace("http://", "")
         
         loop = asyncio.get_event_loop()
-        loop.run_until_complete(retrieve_certs(loop, ct_url, args.start_ct_index, down_dir=args.down_dir,
+        loop.run_until_complete(retrieve_certs(loop, ct_url, int(args.start_ct_index), down_dir=args.down_dir,
                                                 concurrency_cnt=args.concurrency_cnt, block_size=args.block_size,
                                                 fail_file=args.fail_file))
         loop.close()
